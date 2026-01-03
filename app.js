@@ -21,7 +21,6 @@ let targetPlayerCount = 4, hasCelebrated = false;
 
 const haptic = () => { if (navigator.vibrate) navigator.vibrate(12); };
 
-// --- Navigation & Setup ---
 window.adjustCount = (v) => { haptic(); targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v)); document.getElementById('playerCountDisplay').innerText = targetPlayerCount; };
 window.showScreen = (id) => { document.querySelectorAll('.screen').forEach(s => s.style.display='none'); document.getElementById(id).style.display='flex'; };
 window.leaveGame = () => location.reload();
@@ -48,7 +47,6 @@ async function joinGame(code) {
     onValue(ref(db, `games/${gameCode}`), syncApp);
 }
 
-// --- Logic ---
 function calculateScore() {
     if (busted) return 0;
     const sum = usedCards.reduce((a, b) => a + b, 0);
@@ -66,10 +64,7 @@ function syncApp(snap) {
     const playersArr = Object.values(data.players);
 
     currentGrandTotal = (me.history || [0]).reduce((acc, entry, idx) => {
-        if (idx > 0 && idx < data.roundNum) {
-            const val = (typeof entry === 'object') ? (entry.score || 0) : (entry || 0);
-            return acc + val;
-        }
+        if (idx > 0 && idx < data.roundNum) return acc + (typeof entry === 'object' ? (entry.score || 0) : (entry || 0));
         return acc;
     }, 0);
 
@@ -89,14 +84,14 @@ function syncApp(snap) {
         }).sort((a,b) => b.total - a.total);
 
         document.getElementById('live-rankings-list').innerHTML = ranked.map(p => `
-            <div class="live-rank-row ${p.name === myName ? 'me-highlight' : ''}">
-                <span>${p.name} ${p.submitted ? '✅' : '⚡'}</span>
-                <span>${p.isBusted ? '<span style="color:var(--danger)">BUST</span>' : p.total + ' pts'}</span>
+            <div class="live-rank-row ${p.name === myName ? 'me-highlight' : ''} ${p.isBusted ? 'busted-row' : ''}">
+                <div class="live-rank-name">${p.name} ${p.submitted ? '✅' : '⚡'}</div>
+                <div class="live-rank-total">${p.isBusted ? 'BUST' : p.total}</div>
             </div>`).join("");
             
         document.getElementById('leaderboard').innerHTML = ranked.map(p => `
-            <div class="p-row ${p.total >= 200 ? 'threshold-style' : ''}">
-                <b>${p.name}</b> <span>${p.total} pts</span>
+            <div class="p-row ${p.name === myName ? 'me-highlight' : ''} ${p.isBusted ? 'busted-row' : ''}">
+                <b>${p.name}</b> <span>${p.isBusted ? 'BUST' : p.total}</span>
             </div>`).join("");
 
         if (data.host === myName && playersArr.every(p => p.submitted)) {
@@ -111,11 +106,7 @@ function syncApp(snap) {
 function updateUI() {
     const roundScore = calculateScore();
     const hasF7 = (usedCards.length === 7);
-    
-    if(hasF7 && !hasCelebrated && !busted) {
-        document.getElementById('celebration-overlay').style.display = 'flex';
-        hasCelebrated = true;
-    }
+    if(hasF7 && !hasCelebrated && !busted) { document.getElementById('celebration-overlay').style.display = 'flex'; hasCelebrated = true; }
     if(!hasF7) hasCelebrated = false;
     document.getElementById('flip7-banner').style.display = hasF7 ? 'block' : 'none';
 
@@ -139,13 +130,7 @@ function updateUI() {
 }
 
 window.triggerBust = () => { haptic(); busted = !busted; if(busted){ usedCards=[]; bonuses=[]; mult=1; } updateUI(); };
-
-window.toggleMod = (id, val) => {
-    haptic();
-    if(id === 'm2') mult = (mult === 2) ? 1 : 2;
-    else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val);
-    updateUI();
-};
+window.toggleMod = (id, val) => { haptic(); if(id === 'm2') mult = (mult === 2) ? 1 : 2; else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val); updateUI(); };
 
 window.submitRound = async () => {
     haptic();
@@ -172,11 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('cardGrid');
     const bustBtn = document.getElementById('bust-toggle-btn');
     const nInput = document.getElementById('userNameInput');
-    
-    if(nInput) nInput.value = myName;
-    if(nInput) nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); };
-
-    // Clear and build cards 0-12
+    if(nInput) { nInput.value = myName; nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); }; }
     grid.innerHTML = "";
     for(let i=0; i<=12; i++){
         let btn = document.createElement('button'); btn.innerText = i;
@@ -188,5 +169,5 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         grid.appendChild(btn);
     }
-    grid.appendChild(bustBtn); // Re-attach Bust to the end
+    grid.appendChild(bustBtn);
 });
