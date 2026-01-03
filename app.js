@@ -19,9 +19,9 @@ let gameCode = null;
 let usedCards = [], bonuses = [], mult = 1, busted = false, currentGrandTotal = 0;
 let targetPlayerCount = 4, hasCelebrated = false;
 
-const haptic = () => { if (navigator.vibrate) navigator.vibrate(10); };
+const haptic = () => { if (navigator.vibrate) navigator.vibrate(12); };
 
-// Global Helper Functions
+// --- Navigation & Setup ---
 window.adjustCount = (v) => { haptic(); targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v)); document.getElementById('playerCountDisplay').innerText = targetPlayerCount; };
 window.showScreen = (id) => { document.querySelectorAll('.screen').forEach(s => s.style.display='none'); document.getElementById(id).style.display='flex'; };
 window.leaveGame = () => location.reload();
@@ -48,6 +48,7 @@ async function joinGame(code) {
     onValue(ref(db, `games/${gameCode}`), syncApp);
 }
 
+// --- Logic ---
 function calculateScore() {
     if (busted) return 0;
     const sum = usedCards.reduce((a, b) => a + b, 0);
@@ -65,7 +66,10 @@ function syncApp(snap) {
     const playersArr = Object.values(data.players);
 
     currentGrandTotal = (me.history || [0]).reduce((acc, entry, idx) => {
-        if (idx > 0 && idx < data.roundNum) return acc + (typeof entry === 'object' ? entry.score : entry);
+        if (idx > 0 && idx < data.roundNum) {
+            const val = (typeof entry === 'object') ? (entry.score || 0) : (entry || 0);
+            return acc + val;
+        }
         return acc;
     }, 0);
 
@@ -79,7 +83,7 @@ function syncApp(snap) {
         document.getElementById('waiting-view').style.display = me.submitted ? 'block' : 'none';
 
         const ranked = playersArr.map(p => {
-            const hScore = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? b.score : b), 0);
+            const hScore = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? (b.score || 0) : (b || 0)), 0);
             const total = hScore + (p.submitted ? 0 : (p.liveScore || 0));
             return { ...p, total };
         }).sort((a,b) => b.total - a.total);
@@ -96,9 +100,9 @@ function syncApp(snap) {
             </div>`).join("");
 
         if (data.host === myName && playersArr.every(p => p.submitted)) {
-            const anyoneWon = ranked.some(p => p.total >= 200);
-            document.getElementById('nextRoundBtn').style.display = anyoneWon ? 'none' : 'block';
-            document.getElementById('finishGameBtn').style.display = anyoneWon ? 'block' : 'none';
+            const won = ranked.some(p => p.total >= 200);
+            document.getElementById('nextRoundBtn').style.display = won ? 'none' : 'block';
+            document.getElementById('finishGameBtn').style.display = won ? 'block' : 'none';
         }
     }
     updateUI();
@@ -120,9 +124,7 @@ function updateUI() {
     
     if (gameCode && myName) update(ref(db, `games/${gameCode}/players/${myName}`), { liveScore: roundScore, isBusted: busted });
 
-    // Update highlights
-    const gridBtns = document.querySelectorAll('#cardGrid button:not(.bust-btn)');
-    gridBtns.forEach(btn => {
+    document.querySelectorAll('#cardGrid button:not(.bust-btn)').forEach(btn => {
         const val = parseInt(btn.innerText);
         if(usedCards.includes(val)) btn.classList.add('card-active-style');
         else btn.classList.remove('card-active-style');
@@ -149,16 +151,14 @@ window.submitRound = async () => {
     haptic();
     const snap = await get(ref(db, `games/${gameCode}`));
     const rNum = snap.val().roundNum;
-    let h = (await get(ref(db, `games/${gameCode}/players/${myName}`))).val().history || [0];
+    const meSnap = await get(ref(db, `games/${gameCode}/players/${myName}`));
+    let h = meSnap.val().history || [0];
     h[rNum] = { score: calculateScore(), busted };
     await update(ref(db, `games/${gameCode}/players/${myName}`), { history: h, submitted: true, liveScore: 0 });
     usedCards=[]; bonuses=[]; mult=1; busted=false; updateUI();
 };
 
-window.editScore = async () => {
-    haptic();
-    await update(ref(db, `games/${gameCode}/players/${myName}`), { submitted: false });
-};
+window.editScore = async () => { haptic(); await update(ref(db, `games/${gameCode}/players/${myName}`), { submitted: false }); };
 
 window.readyForNextRound = async () => {
     haptic();
@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(nInput) nInput.value = myName;
     if(nInput) nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); };
 
+    // Clear and build cards 0-12
     grid.innerHTML = "";
     for(let i=0; i<=12; i++){
         let btn = document.createElement('button'); btn.innerText = i;
@@ -187,5 +188,5 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         grid.appendChild(btn);
     }
-    grid.appendChild(bustBtn);
+    grid.appendChild(bustBtn); // Re-attach Bust to the end
 });
