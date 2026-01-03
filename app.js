@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyConuxhGCtGvJaa6TZ1bkUvlOhhTdyTgZE",
     authDomain: "flip7share.firebaseapp.com",
@@ -15,35 +14,25 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- State Variables ---
 let myName = localStorage.getItem('f7_name') || "";
 let gameCode = null;
 let activeGames = JSON.parse(localStorage.getItem('f7_game_list')) || [];
 let usedCards = [], bonuses = [], mult = 1, busted = false, currentGrandTotal = 0;
 let targetPlayerCount = 4;
-let hasCelebratedThisRound = false; // Fix for celebration loop
+let hasCelebratedThisRound = false; 
 
-// --- GLOBAL EXPORTS ---
+// --- Window Exports ---
 window.adjustCount = (v) => {
     targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v));
-    const display = document.getElementById('playerCountDisplay');
-    if (display) display.innerText = targetPlayerCount;
+    document.getElementById('playerCountDisplay').innerText = targetPlayerCount;
 };
 
 window.hostGameFromUI = async () => {
     if(!myName || myName.trim() === "") return alert("Please enter your name first!");
     const newCode = Math.floor(100000 + Math.random() * 900000).toString();
     saveToGameList(newCode);
-    await set(ref(db, `games/${newCode}`), { 
-        host: myName, targetCount: targetPlayerCount, status: "waiting", roundNum: 1 
-    });
+    await set(ref(db, `games/${newCode}`), { host: myName, targetCount: targetPlayerCount, status: "waiting", roundNum: 1 });
     joinGame(newCode);
-};
-
-window.openJoinPopup = () => {
-    let c = prompt("Enter 6-digit code:");
-    if(c && myName) joinGame(c);
-    else if(!myName) alert("Please enter your name first!");
 };
 
 window.submitRound = async () => {
@@ -57,13 +46,11 @@ window.submitRound = async () => {
         history: h, submitted: true, liveScore: 0, isBusted: false 
     });
     
-    // Reset local state for next round
-    usedCards = []; bonuses = []; mult = 1; busted = false; 
-    hasCelebratedThisRound = false; 
+    usedCards = []; bonuses = []; mult = 1; busted = false; hasCelebratedThisRound = false; 
     updateUI();
 };
 
-// --- Logic ---
+// --- Core Logic ---
 function calculateCurrentScore() {
     if (busted) return 0;
     const sum = usedCards.reduce((a, b) => a + b, 0);
@@ -75,14 +62,11 @@ function calculateCurrentScore() {
 function syncApp(snap) {
     const data = snap.val(); if(!data) return;
     gameCode = snap.key;
-    
-    const gameDisp = document.getElementById('roomCodeDisplay');
-    if (gameDisp) gameDisp.innerText = `CODE: ${gameCode} | R${data.roundNum}`;
-
     const me = data.players[myName]; if(!me) return;
     const playersArr = Object.values(data.players || {});
 
-    // Calculate current grand total
+    document.getElementById('roomCodeDisplay').innerText = `CODE: ${gameCode} | R${data.roundNum}`;
+
     currentGrandTotal = (me.history || [0]).reduce((acc, entry, idx) => {
         if (idx > 0 && idx < data.roundNum) {
             const val = (typeof entry === 'object') ? entry.score : entry;
@@ -100,7 +84,6 @@ function syncApp(snap) {
         document.getElementById('calc-view').style.display = me.submitted ? 'none' : 'block';
         document.getElementById('waiting-view').style.display = me.submitted ? 'block' : 'none';
         
-        // Render Live Rankings
         const rankedPlayers = playersArr.map(p => {
             const historyScore = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? b.score : b), 0);
             const total = historyScore + (p.submitted ? 0 : (p.liveScore || 0));
@@ -121,37 +104,34 @@ function syncApp(snap) {
 
 function updateUI() {
     const hasF7 = (usedCards.length === 7);
-    const banner = document.getElementById('flip7-banner');
-    
-    // Celebration Fix
     if(hasF7 && !hasCelebratedThisRound && !busted) {
         document.getElementById('celebration-overlay').style.display = 'flex';
         hasCelebratedThisRound = true;
     }
     if(!hasF7) hasCelebratedThisRound = false;
     
+    const banner = document.getElementById('flip7-banner');
     if(banner) banner.style.display = (hasF7 && !busted) ? 'block' : 'none';
 
     const roundScore = calculateCurrentScore();
     document.getElementById('round-display').innerText = busted ? "BUST" : roundScore;
     document.getElementById('grand-display').innerText = currentGrandTotal + roundScore;
     
-    // Sync with Firebase (only if currently playing)
     const isPlaying = document.getElementById('calc-view').style.display === 'block';
     if (gameCode && myName && isPlaying) {
-        update(ref(db, `games/${gameCode}/players/${myName}`), { 
-            liveScore: roundScore, isBusted: busted 
-        });
+        update(ref(db, `games/${gameCode}/players/${myName}`), { liveScore: roundScore, isBusted: busted });
     }
 
     const grid = document.getElementById('cardGrid');
     if(grid) {
         Array.from(grid.children).forEach((btn, i) => {
-            btn.className = usedCards.includes(i) ? 'card-active-style' : '';
+            if (i <= 12) btn.className = usedCards.includes(i) ? 'card-active-style' : '';
         });
     }
 
-    document.getElementById('bust-toggle-btn').className = busted ? "big-btn bust-btn bust-active" : "big-btn bust-btn";
+    const bBtn = document.getElementById('bust-toggle-btn');
+    if(bBtn) bBtn.className = busted ? "big-btn bust-btn bust-active" : "big-btn bust-btn";
+    
     document.getElementById('btn-m2').className = (mult === 2) ? "mod-btn-active" : "";
     [2,4,6,8,10].forEach(v => {
         const b = document.getElementById('btn-p' + v);
@@ -183,12 +163,19 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             grid.appendChild(btn);
         }
+        // Add Bust Button into the same grid
+        let bustBtn = document.createElement('button');
+        bustBtn.id = "bust-toggle-btn";
+        bustBtn.innerText = "BUST";
+        bustBtn.className = "big-btn bust-btn";
+        bustBtn.onclick = () => window.triggerBust();
+        grid.appendChild(bustBtn);
     }
 });
 
-// Helper functions for joining and screens
+// Helpers
 async function joinGame(code) {
-    gameCode = String(code); saveToGameList(gameCode);
+    gameCode = String(code); 
     const pRef = ref(db, `games/${gameCode}/players/${myName}`);
     const snap = await get(pRef);
     if (!snap.exists()) await set(pRef, { name: myName, history: [0], submitted: false, isBusted: false, liveScore: 0 });
