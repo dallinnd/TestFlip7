@@ -71,6 +71,7 @@ function syncApp(snap) {
     if (data.status === "waiting") {
         window.showScreen('lobby-screen');
         document.getElementById('lobby-status').innerText = `Joined: ${playersArr.length} / ${data.targetCount}`;
+        document.getElementById('player-list').innerHTML = playersArr.map(p => `<div class="player-tile"><b>${p.name}</b></div>`).join("");
         if(playersArr.length >= data.targetCount && data.host === myName) update(ref(db, `games/${gameCode}`), { status: "active" });
     } else {
         window.showScreen('game-screen');
@@ -83,16 +84,14 @@ function syncApp(snap) {
             return { ...p, total };
         }).sort((a,b) => b.total - a.total);
 
-        document.getElementById('live-rankings-list').innerHTML = ranked.map(p => `
-            <div class="live-rank-row ${p.name === myName ? 'me-highlight' : ''} ${p.isBusted ? 'busted-row' : ''}">
-                <div class="live-rank-name">${p.name} ${p.submitted ? '✅' : '⚡'}</div>
-                <div class="live-rank-total">${p.isBusted ? 'BUST' : p.total}</div>
-            </div>`).join("");
-            
-        document.getElementById('leaderboard').innerHTML = ranked.map(p => `
-            <div class="p-row ${p.name === myName ? 'me-highlight' : ''} ${p.isBusted ? 'busted-row' : ''}">
-                <b>${p.name}</b> <span>${p.isBusted ? 'BUST' : p.total}</span>
-            </div>`).join("");
+        const buildTile = (p) => `
+            <div class="player-tile ${p.name === myName ? 'me-highlight' : ''} ${p.isBusted ? 'busted-tile' : ''}">
+                <b>${p.name} ${p.submitted ? '✅' : '⚡'}</b>
+                <span>${p.isBusted ? 'BUST' : p.total}</span>
+            </div>`;
+
+        document.getElementById('live-rankings-list').innerHTML = ranked.map(buildTile).join("");
+        document.getElementById('leaderboard').innerHTML = ranked.map(buildTile).join("");
 
         if (data.host === myName && playersArr.every(p => p.submitted)) {
             const won = ranked.some(p => p.total >= 200);
