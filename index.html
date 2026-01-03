@@ -65,7 +65,6 @@
         <div class="main-scroll-area">
             <div id="calc-view">
                 <div id="flip7-banner" class="banner" style="display:none;">FLIP 7 BONUS! (+15)</div>
-                
                 <div class="card-grid" id="cardGrid">
                     <button class="big-btn bust-btn" id="bust-toggle-btn" onclick="window.triggerBust()">BUST</button>
                 </div> 
@@ -95,7 +94,7 @@
                 </div>
 
                 <div class="section-spacer"></div>
-                <div id="live-rankings" class="live-rankings-area">
+                <div class="standings-container">
                     <div class="ranking-header">LIVE STANDINGS</div>
                     <div id="live-rankings-list"></div>
                 </div>
@@ -106,7 +105,7 @@
                     <h2>LEADERBOARD</h2>
                     <button class="nav-btn-themed" onclick="window.editScore()">EDIT SCORE</button>
                 </div>
-                <div id="leaderboard"></div>
+                <div id="leaderboard" class="full-width-list"></div>
                 <div class="section-spacer"></div> 
                 <button id="nextRoundBtn" class="big-btn next-btn" style="background: var(--gold); color: #443300; display:none;" onclick="window.readyForNextRound()">NEXT ROUND</button>
                 <button id="finishGameBtn" class="big-btn submit-btn" style="display:none;" onclick="window.showEndPrompt()">FINISH GAME</button>
@@ -117,7 +116,7 @@
     <div id="lobby-screen" class="screen" style="display:none;">
         <h2 id="roomDisplayLobby">Game: ------</h2>
         <div id="lobby-status" class="lobby-count">Joined: 0 / 0</div>
-        <div id="player-list" class="player-list"></div>
+        <div id="player-list" class="full-width-list"></div>
         <p class="pulse">Waiting for players...</p>
         <button class="nav-btn-themed" onclick="window.leaveGame()">Leave Lobby</button>
     </div>
