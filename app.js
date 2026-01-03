@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyConuxhGCtGvJaa6TZ1bkUvlOhhTdyTgZE",
     authDomain: "flip7share.firebaseapp.com",
@@ -14,25 +15,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- State ---
+// --- State Variables ---
 let myName = localStorage.getItem('f7_name') || "";
 let gameCode = null;
 let activeGames = JSON.parse(localStorage.getItem('f7_game_list')) || [];
 let usedCards = [], bonuses = [], mult = 1, busted = false, currentGrandTotal = 0;
-let targetPlayerCount = 4, hasCelebrated = false;
+let targetPlayerCount = 4;
+let hasCelebratedThisRound = false; // Fix for celebration loop
 
-// --- Global Window Exports ---
+// --- GLOBAL EXPORTS ---
 window.adjustCount = (v) => {
     targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v));
-    document.getElementById('playerCountDisplay').innerText = targetPlayerCount;
+    const display = document.getElementById('playerCountDisplay');
+    if (display) display.innerText = targetPlayerCount;
 };
 
 window.hostGameFromUI = async () => {
-    if(!myName || myName.trim() === "") return alert("Enter your name first!");
+    if(!myName || myName.trim() === "") return alert("Please enter your name first!");
     const newCode = Math.floor(100000 + Math.random() * 900000).toString();
     saveToGameList(newCode);
-    await set(ref(db, `games/${newCode}`), { host: myName, targetCount: targetPlayerCount, status: "waiting", roundNum: 1 });
-    await joinGame(newCode);
+    await set(ref(db, `games/${newCode}`), { 
+        host: myName, targetCount: targetPlayerCount, status: "waiting", roundNum: 1 
+    });
+    joinGame(newCode);
+};
+
+window.openJoinPopup = () => {
+    let c = prompt("Enter 6-digit code:");
+    if(c && myName) joinGame(c);
+    else if(!myName) alert("Please enter your name first!");
 };
 
 window.submitRound = async () => {
@@ -46,8 +57,9 @@ window.submitRound = async () => {
         history: h, submitted: true, liveScore: 0, isBusted: false 
     });
     
+    // Reset local state for next round
     usedCards = []; bonuses = []; mult = 1; busted = false; 
-    hasCelebrated = false; // Reset for next round
+    hasCelebratedThisRound = false; 
     updateUI();
 };
 
@@ -70,7 +82,7 @@ function syncApp(snap) {
     const me = data.players[myName]; if(!me) return;
     const playersArr = Object.values(data.players || {});
 
-    // Calculate current grand total from history
+    // Calculate current grand total
     currentGrandTotal = (me.history || [0]).reduce((acc, entry, idx) => {
         if (idx > 0 && idx < data.roundNum) {
             const val = (typeof entry === 'object') ? entry.score : entry;
@@ -85,43 +97,38 @@ function syncApp(snap) {
         if(playersArr.length >= data.targetCount && data.host === myName) update(ref(db, `games/${gameCode}`), { status: "active" });
     } else {
         window.showScreen('game-screen');
-        const isWaiting = me.submitted;
-        document.getElementById('calc-view').style.display = isWaiting ? 'none' : 'block';
-        document.getElementById('waiting-view').style.display = isWaiting ? 'block' : 'none';
+        document.getElementById('calc-view').style.display = me.submitted ? 'none' : 'block';
+        document.getElementById('waiting-view').style.display = me.submitted ? 'block' : 'none';
         
-        // Rankings logic
+        // Render Live Rankings
         const rankedPlayers = playersArr.map(p => {
             const historyScore = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? b.score : b), 0);
             const total = historyScore + (p.submitted ? 0 : (p.liveScore || 0));
             return { ...p, displayTotal: total, isMe: p.name === myName };
         }).sort((a,b) => b.displayTotal - a.displayTotal);
 
-        renderRankings(rankedPlayers);
+        const liveList = document.getElementById('live-rankings-list');
+        if (liveList) {
+            liveList.innerHTML = rankedPlayers.map(p => `
+                <div class="live-rank-row ${p.isMe ? 'me-highlight' : ''}">
+                    <div>${p.name} ${p.submitted ? '✅' : '⚡'}</div>
+                    <div style="color: ${p.isBusted ? 'var(--danger)' : 'var(--gold)'}">${p.isBusted ? 'BUST' : p.displayTotal + ' pts'}</div>
+                </div>`).join("");
+        }
     }
     updateUI();
-}
-
-function renderRankings(players) {
-    const liveList = document.getElementById('live-rankings-list');
-    if (liveList) {
-        liveList.innerHTML = players.map(p => `
-            <div class="live-rank-row ${p.isMe ? 'me-highlight' : ''}">
-                <div>${p.name} ${p.submitted ? '✅' : '⚡'}</div>
-                <div class="live-rank-total">${p.isBusted ? 'BUST' : p.displayTotal + 'pts'}</div>
-            </div>`).join("");
-    }
 }
 
 function updateUI() {
     const hasF7 = (usedCards.length === 7);
     const banner = document.getElementById('flip7-banner');
     
-    // Celebration Trigger
-    if(hasF7 && !hasCelebrated && !busted) {
+    // Celebration Fix
+    if(hasF7 && !hasCelebratedThisRound && !busted) {
         document.getElementById('celebration-overlay').style.display = 'flex';
-        hasCelebrated = true;
+        hasCelebratedThisRound = true;
     }
-    if(!hasF7) hasCelebrated = false;
+    if(!hasF7) hasCelebratedThisRound = false;
     
     if(banner) banner.style.display = (hasF7 && !busted) ? 'block' : 'none';
 
@@ -129,51 +136,59 @@ function updateUI() {
     document.getElementById('round-display').innerText = busted ? "BUST" : roundScore;
     document.getElementById('grand-display').innerText = currentGrandTotal + roundScore;
     
-    // Update live score in DB
-    if (gameCode && myName && document.getElementById('calc-view').style.display !== 'none') {
-        update(ref(db, `games/${gameCode}/players/${myName}`), { liveScore: roundScore, isBusted: busted });
+    // Sync with Firebase (only if currently playing)
+    const isPlaying = document.getElementById('calc-view').style.display === 'block';
+    if (gameCode && myName && isPlaying) {
+        update(ref(db, `games/${gameCode}/players/${myName}`), { 
+            liveScore: roundScore, isBusted: busted 
+        });
     }
 
-    // Refresh Grids
     const grid = document.getElementById('cardGrid');
     if(grid) {
         Array.from(grid.children).forEach((btn, i) => {
             btn.className = usedCards.includes(i) ? 'card-active-style' : '';
         });
     }
+
+    document.getElementById('bust-toggle-btn').className = busted ? "big-btn bust-btn bust-active" : "big-btn bust-btn";
+    document.getElementById('btn-m2').className = (mult === 2) ? "mod-btn-active" : "";
+    [2,4,6,8,10].forEach(v => {
+        const b = document.getElementById('btn-p' + v);
+        if(b) b.className = bonuses.includes(v) ? "mod-btn-active" : "";
+    });
 }
 
-// Initializers
+// --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     const nInput = document.getElementById('userNameInput');
-    if(nInput) {
-        nInput.value = myName;
-        nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); };
+    if(nInput) { 
+        nInput.value = myName; 
+        nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); }; 
     }
-    // Generate Cards
+    
     const grid = document.getElementById('cardGrid');
     if(grid) {
         grid.innerHTML = "";
         for(let i=0; i<=12; i++){
-            let btn = document.createElement('button');
+            let btn = document.createElement('button'); 
             btn.innerText = i;
-            btn.onclick = () => {
-                if(busted) { busted = false; usedCards = [i]; }
+            btn.onclick = () => { 
+                if (busted) { busted = false; usedCards = [i]; } 
                 else {
-                    if(usedCards.includes(i)) usedCards = usedCards.filter(v=>v!==i);
-                    else if(usedCards.length < 7) usedCards.push(i);
+                    if(usedCards.includes(i)) usedCards = usedCards.filter(v=>v!==i); 
+                    else if(usedCards.length < 7) usedCards.push(i); 
                 }
-                updateUI();
+                updateUI(); 
             };
             grid.appendChild(btn);
         }
     }
 });
 
-// Helper Functions
+// Helper functions for joining and screens
 async function joinGame(code) {
-    gameCode = String(code); 
-    saveToGameList(gameCode);
+    gameCode = String(code); saveToGameList(gameCode);
     const pRef = ref(db, `games/${gameCode}/players/${myName}`);
     const snap = await get(pRef);
     if (!snap.exists()) await set(pRef, { name: myName, history: [0], submitted: false, isBusted: false, liveScore: 0 });
