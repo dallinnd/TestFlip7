@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyConuxhGCtGvJaa6TZ1bkUvlOhhTdyTgZE",
     authDomain: "flip7share.firebaseapp.com",
@@ -14,30 +15,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- State ---
+// --- State Variables ---
 let myName = localStorage.getItem('f7_name') || "";
 let gameCode = null;
 let activeGames = JSON.parse(localStorage.getItem('f7_game_list')) || [];
 let usedCards = [], bonuses = [], mult = 1, busted = false, currentGrandTotal = 0;
 let targetPlayerCount = 4, hasCelebrated = false;
 
-// --- GLOBAL EXPORTS (Crucial for onclick to work) ---
+/**
+ * GLOBAL EXPORTS
+ * These functions are attached to the 'window' object so they can be 
+ * called directly from the HTML 'onclick' attributes.
+ */
+
 window.adjustCount = (v) => {
     targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v));
-    document.getElementById('playerCountDisplay').innerText = targetPlayerCount;
-};
-
-window.hostGameFromUI = async () => {
-    if(!myName || myName.trim() === "") return alert("Enter Name!");
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    saveToGameList(code);
-    await set(ref(db, `games/${code}`), { host: myName, targetCount: targetPlayerCount, status: "waiting", roundNum: 1 });
-    await set(ref(db, `games/${code}/players/${myName}`), { name: myName, history: [0], submitted: false });
-    onValue(ref(db, `games/${code}`), syncApp);
+    const display = document.getElementById('playerCountDisplay');
+    if (display) display.innerText = targetPlayerCount;
 };
 
 window.deleteGame = (code) => {
-    if (confirm(`Remove Game ${code}?`)) {
+    if (confirm(`Remove Game ${code} from your list?`)) {
         activeGames = activeGames.filter(c => String(c) !== String(code));
         localStorage.setItem('f7_game_list', JSON.stringify(activeGames));
         renderGameList();
@@ -45,46 +43,74 @@ window.deleteGame = (code) => {
 };
 
 window.deleteAllGames = () => {
-    if (confirm("Delete ALL games?")) {
+    if (confirm("Delete ALL games from your local list?")) {
         activeGames = [];
         localStorage.setItem('f7_game_list', JSON.stringify([]));
         renderGameList();
     }
 };
 
+window.resumeSpecificGame = (code) => joinGame(code);
+
+window.showEndPrompt = () => {
+    document.getElementById('end-game-overlay').style.display = 'flex';
+};
+
+window.rematch = async () => {
+    if (!gameCode) return;
+    const snap = await get(ref(db, `games/${gameCode}`));
+    const players = snap.val().players;
+    const updates = {};
+    
+    updates[`games/${gameCode}/roundNum`] = 1;
+    updates[`games/${gameCode}/status`] = "active";
+    for (let p in players) {
+        updates[`games/${gameCode}/players/${p}/history`] = [0];
+        updates[`games/${gameCode}/players/${p}/submitted`] = false;
+        updates[`games/${gameCode}/players/${p}/liveScore`] = 0;
+        updates[`games/${gameCode}/players/${p}/isBusted`] = false;
+    }
+    
+    await update(ref(db), updates);
+    document.getElementById('end-game-overlay').style.display = 'none';
+};
+
+window.hostGameFromUI = async () => {
+    if(!myName || myName.trim() === "") return alert("Please enter your name first!");
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    saveToGameList(newCode);
+    await set(ref(db, `games/${newCode}`), { 
+        host: myName, 
+        targetCount: targetPlayerCount, 
+        status: "waiting", 
+        roundNum: 1 
+    });
+    await set(ref(db, `games/${newCode}/players/${myName}`), { 
+        name: myName, 
+        history: [0], 
+        submitted: false,
+        isBusted: false,
+        liveScore: 0
+    });
+    onValue(ref(db, `games/${newCode}`), syncApp);
+};
+
 window.openJoinPopup = () => {
-    let c = prompt("6-Digit Code:");
+    let c = prompt("Enter 6-digit code:");
     if(c && myName) joinGame(c);
+    else if(!myName) alert("Please enter your name first!");
 };
 
-window.clearCards = () => {
-    usedCards = []; busted = false; mult = 1; bonuses = [];
-    updateUI();
-};
-
-window.toggleLog = async () => {
-    const overlay = document.getElementById('log-overlay');
-    if (overlay.style.display !== 'flex') {
-        const snap = await get(ref(db, `games/${gameCode}/players/${myName}`));
-        const hist = snap.val().history || [];
-        document.getElementById('history-list').innerHTML = hist.map((entry, idx) => {
-            if (idx === 0) return "";
-            const score = typeof entry === 'object' ? entry.score : entry;
-            const isBust = typeof entry === 'object' ? entry.busted : (score === 0);
-            return `<div class="log-item"><b>RD ${idx}</b><span style="${isBust?'color:red':''}">${isBust?'BUSTED':score+' pts'}</span></div>`;
-        }).join("");
-        overlay.style.display = 'flex';
-    } else overlay.style.display = 'none';
-};
-
-// --- Core App Logic ---
+// --- Scoring Logic ---
 function calculateCurrentScore() {
     if (busted) return 0;
     const sum = usedCards.reduce((a, b) => a + b, 0);
     const totalB = bonuses.reduce((a, b) => a + b, 0);
-    return (sum * mult) + totalB + (usedCards.length === 7 ? 15 : 0);
+    const f7Bonus = (usedCards.length === 7) ? 15 : 0;
+    return (sum * mult) + totalB + f7Bonus;
 }
 
+// --- Local Management ---
 function saveToGameList(code) {
     if (!activeGames.includes(String(code))) {
         activeGames.push(String(code));
@@ -94,88 +120,143 @@ function saveToGameList(code) {
 }
 
 async function joinGame(code) {
-    gameCode = String(code); saveToGameList(gameCode);
+    gameCode = String(code); 
+    saveToGameList(gameCode);
     const pRef = ref(db, `games/${gameCode}/players/${myName}`);
     const snap = await get(pRef);
-    if (!snap.exists()) await set(pRef, { name: myName, history: [0], submitted: false });
+    if (!snap.exists()) await set(pRef, { name: myName, history: [0], submitted: false, isBusted: false, liveScore: 0 });
     onValue(ref(db, `games/${gameCode}`), syncApp);
 }
 
 function renderGameList() {
-    const container = document.getElementById('game-list-container');
     const manager = document.getElementById('game-manager');
+    const container = document.getElementById('game-list-container');
     if (!container || !manager) return;
     if (activeGames.length === 0) { manager.style.display = 'none'; return; }
     manager.style.display = 'block';
     container.innerHTML = activeGames.map(code => `
-        <div class="game-item" style="display:flex; justify-content:space-between; align-items:center; background:var(--glass); padding:10px; border-radius:15px; margin-bottom:10px;">
-            <div onclick="window.resumeSpecificGame('${code}')" style="font-weight:900; cursor:pointer;">GAME: ${code}</div>
-            <button onclick="window.deleteGame('${code}')" style="background:var(--danger); border:none; border-radius:8px; color:white; width:30px; height:30px;">×</button>
+        <div class="game-item">
+            <div class="game-info" onclick="window.resumeSpecificGame('${code}')">GAME: ${code}</div>
+            <button class="delete-single-btn" onclick="window.deleteGame('${code}')">×</button>
         </div>`).join("");
 }
 
-window.resumeSpecificGame = (code) => joinGame(code);
+// --- Real-time Sync Logic ---
 
 function syncApp(snap) {
     const data = snap.val(); if(!data) return;
     gameCode = snap.key;
-    const playersArr = Object.values(data.players || {});
-    const me = data.players[myName]; if(!me) return;
+    
+    // Update Header Labels
+    const lobbyDisp = document.getElementById('roomDisplayLobby');
+    const gameDisp = document.getElementById('roomCodeDisplay');
+    if (lobbyDisp) lobbyDisp.innerText = "Game: " + gameCode;
+    if (gameDisp) gameDisp.innerText = `CODE: ${gameCode} | R${data.roundNum}`;
 
-    currentGrandTotal = (me.history || []).reduce((acc, entry, idx) => {
-        if (idx > 0 && idx < data.roundNum) return acc + (typeof entry === 'object' ? entry.score : entry);
+    const me = data.players[myName]; if(!me) return;
+    const playersArr = Object.values(data.players || {});
+
+    // Calculate My Current Grand Total (excluding this live round)
+    const myHistory = me.history || [0];
+    currentGrandTotal = myHistory.reduce((acc, entry, idx) => {
+        if (idx > 0 && idx < data.roundNum) {
+            const val = (typeof entry === 'object') ? entry.score : entry;
+            return acc + (val || 0);
+        }
         return acc;
     }, 0);
-
+    
     if (data.status === "waiting") {
         window.showScreen('lobby-screen');
         document.getElementById('lobby-status').innerText = `Joined: ${playersArr.length} / ${data.targetCount}`;
+        document.getElementById('player-list').innerHTML = playersArr.map(p => `<div class="p-row"><b>${p.name}</b></div>`).join("");
         if(playersArr.length >= data.targetCount && data.host === myName) update(ref(db, `games/${gameCode}`), { status: "active" });
     } else {
         window.showScreen('game-screen');
         document.getElementById('calc-view').style.display = me.submitted ? 'none' : 'block';
         document.getElementById('waiting-view').style.display = me.submitted ? 'block' : 'none';
         
-        const ranked = playersArr.map(p => {
-            const grand = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? b.score : b), 0);
-            const live = p.submitted ? 0 : (p.liveScore || 0);
-            return { ...p, total: grand + live };
-        }).sort((a,b) => b.total - a.total);
+        // --- Process Live Rankings ---
+        let anyoneReachedThreshold = false;
+        const rankedPlayers = playersArr.map(p => {
+            const historyScore = (p.history || []).reduce((a,b) => a + (typeof b === 'object' ? b.score : b), 0);
+            const liveScore = p.submitted ? 0 : (p.liveScore || 0);
+            const total = historyScore + liveScore;
+            if (total >= 200) anyoneReachedThreshold = true;
+            return { ...p, displayTotal: total, isMe: p.name === myName };
+        }).sort((a,b) => b.displayTotal - a.displayTotal);
 
-        document.getElementById('live-rankings-list').innerHTML = ranked.map(p => `
-            <div class="live-rank-row ${p.name===myName?'me-highlight':''}">
-                <span>${p.name} ${p.submitted?'✅':'⚡'}</span>
-                <b>${p.isBusted?'BUST':p.total+' pts'}</b>
+        // Render Live Standings (on Calculator Screen)
+        const liveList = document.getElementById('live-rankings-list');
+        if (liveList) {
+            liveList.innerHTML = rankedPlayers.map(p => `
+                <div class="live-rank-row ${p.isMe ? 'me-highlight' : ''}">
+                    <div class="live-rank-name">${p.name} ${p.submitted ? '✅' : '<span class="live-icon">⚡</span>'}</div>
+                    <div class="live-rank-total">${p.isBusted ? '<span style="color:var(--danger)">BUST</span>' : p.displayTotal + ' pts'}</div>
+                </div>`).join("");
+        }
+
+        // Render Final Leaderboard (on Waiting Screen)
+        document.getElementById('leaderboard').innerHTML = rankedPlayers.map(p => `
+            <div class="p-row ${p.isBusted ? 'busted-row' : ''} ${p.displayTotal >= 200 ? 'threshold-style' : ''}">
+                <b>${p.name} ${p.submitted ? '✅' : '...'}</b>
+                <span>${p.isBusted ? 'BUST' : p.displayTotal + ' pts'}</span>
             </div>`).join("");
 
-        document.getElementById('leaderboard').innerHTML = ranked.map(p => `
-            <div class="p-row ${p.isBusted?'busted-row':''}" style="padding:15px; background:rgba(0,0,0,0.2); border-radius:15px; margin-bottom:8px; display:flex; justify-content:space-between;">
-                <b>${p.name}</b><span>${p.isBusted?'BUST':p.total+' pts'}</span>
-            </div>`).join("");
+        // Host Control Buttons
+        const isAllSubmitted = playersArr.every(p => p.submitted);
+        const nextBtn = document.getElementById('nextRoundBtn');
+        const finishBtn = document.getElementById('finishGameBtn');
 
-        const allSub = playersArr.every(p => p.submitted);
-        const someoneWon = ranked.some(p => p.total >= 200);
-        document.getElementById('nextRoundBtn').style.display = (data.host===myName && allSub && !someoneWon) ? 'block' : 'none';
-        document.getElementById('finishGameBtn').style.display = (data.host===myName && allSub && someoneWon) ? 'block' : 'none';
+        if (data.host === myName && isAllSubmitted) {
+            if (anyoneReachedThreshold) {
+                nextBtn.style.display = 'none';
+                finishBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'block';
+                finishBtn.style.display = 'none';
+            }
+        } else {
+            nextBtn.style.display = 'none';
+            finishBtn.style.display = 'none';
+        }
     }
     updateUI();
 }
 
 function updateUI() {
-    const rScore = calculateCurrentScore();
-    document.getElementById('round-display').innerText = busted ? "BUST" : rScore;
-    document.getElementById('grand-display').innerText = currentGrandTotal + rScore;
+    const hasF7 = (usedCards.length === 7);
+    const banner = document.getElementById('flip7-banner');
     
-    if (gameCode && myName) update(ref(db, `games/${gameCode}/players/${myName}`), { liveScore: rScore, isBusted: busted });
+    if(hasF7 && !hasCelebrated && !busted) {
+        document.getElementById('celebration-overlay').style.display = 'flex';
+        hasCelebrated = true;
+    }
+    if(!hasF7) hasCelebrated = false;
+    if(banner) banner.style.display = hasF7 ? 'block' : 'none';
+
+    const roundScore = calculateCurrentScore();
+    const liveGrandTotal = currentGrandTotal + roundScore;
+
+    document.getElementById('round-display').innerText = busted ? "BUST" : roundScore;
+    document.getElementById('grand-display').innerText = liveGrandTotal;
+    
+    // Push Live Data to Firebase
+    if (gameCode && myName) {
+        update(ref(db, `games/${gameCode}/players/${myName}`), { 
+            liveScore: roundScore, 
+            isBusted: busted 
+        });
+    }
 
     const grid = document.getElementById('cardGrid');
     if(grid) {
         Array.from(grid.children).forEach((btn, i) => {
-            btn.className = "";
-            if(usedCards.includes(i)) btn.className = busted ? "card-busted-style" : "card-active-style";
+            if (usedCards.includes(i)) btn.classList.add('card-active-style');
+            else btn.classList.remove('card-active-style');
         });
     }
-    document.getElementById('bust-toggle-btn').innerText = busted ? "UNBUST / CLEAR" : "CLEAR CARDS";
+
     document.getElementById('bust-toggle-btn').className = busted ? "big-btn bust-btn bust-active" : "big-btn bust-btn";
     document.getElementById('btn-m2').className = (mult === 2) ? "mod-btn-active" : "";
     [2,4,6,8,10].forEach(v => {
@@ -190,9 +271,27 @@ window.submitRound = async () => {
     const rNum = snap.val().roundNum;
     const score = calculateCurrentScore();
     let h = (await get(ref(db, `games/${gameCode}/players/${myName}`))).val().history || [0];
-    h[rNum] = { score, busted, usedCards: [...usedCards], bonuses: [...bonuses], mult };
-    await update(ref(db, `games/${gameCode}/players/${myName}`), { history: h, submitted: true, liveScore: 0, isBusted: false });
-    window.clearCards();
+    h[rNum] = { score, usedCards: [...usedCards], bonuses: [...bonuses], mult, busted };
+    await update(ref(db, `games/${gameCode}/players/${myName}`), { 
+        history: h, 
+        submitted: true, 
+        liveScore: 0, 
+        isBusted: false 
+    });
+    usedCards = []; bonuses = []; mult = 1; busted = false; updateUI();
+};
+
+window.editScore = async () => {
+    const snap = await get(ref(db, `games/${gameCode}`));
+    const rNum = snap.val().roundNum;
+    const me = snap.val().players[myName];
+    if (me.history && me.history[rNum]) {
+        const prev = me.history[rNum];
+        usedCards = [...(prev.usedCards || [])]; bonuses = [...(prev.bonuses || [])];
+        mult = prev.mult || 1; busted = prev.busted || false;
+    }
+    await update(ref(db, `games/${gameCode}/players/${myName}`), { submitted: false });
+    updateUI();
 };
 
 window.readyForNextRound = async () => {
@@ -202,48 +301,54 @@ window.readyForNextRound = async () => {
     await update(ref(db), up);
 };
 
-window.rematch = async () => {
-    const snap = await get(ref(db, `games/${gameCode}`));
-    const players = snap.val().players;
-    const updates = {};
-    updates[`games/${gameCode}/roundNum`] = 1;
-    updates[`games/${gameCode}/status`] = "active";
-    for (let p in players) {
-        updates[`games/${gameCode}/players/${p}/history`] = [0];
-        updates[`games/${gameCode}/players/${p}/submitted`] = false;
-    }
-    await update(ref(db), updates);
-    document.getElementById('end-game-overlay').style.display = 'none';
-};
-
-window.toggleMod = (id, val) => {
-    if(id === 'm2') mult = (mult === 2) ? 1 : 2;
-    else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val);
-    updateUI();
-};
-
 window.showScreen = (id) => {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById(id).style.display = 'flex';
+    const target = document.getElementById(id);
+    if (target) target.style.display = 'flex';
 };
 
-window.leaveGame = () => location.reload();
+window.triggerBust = () => { 
+    busted = !busted; 
+    if(busted) { usedCards = []; bonuses = []; mult = 1; } 
+    updateUI(); 
+};
+
+window.toggleMod = (id, val) => { 
+    if(id === 'm2') mult = (mult === 2) ? 1 : 2; 
+    else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val); 
+    updateUI(); 
+};
+
+window.leaveGame = () => { 
+    if(confirm("Exit to home page?")) location.reload(); 
+};
+
 window.closeCelebration = () => document.getElementById('celebration-overlay').style.display = 'none';
 
+// --- Initialize UI on Load ---
 document.addEventListener('DOMContentLoaded', () => {
     const nInput = document.getElementById('userNameInput');
-    if(nInput) { nInput.value = myName; nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); }; }
+    if(nInput) { 
+        nInput.value = myName; 
+        nInput.oninput = () => { 
+            myName = nInput.value; 
+            localStorage.setItem('f7_name', myName); 
+        }; 
+    }
     renderGameList();
     const grid = document.getElementById('cardGrid');
     if(grid) {
         grid.innerHTML = "";
         for(let i=0; i<=12; i++){
-            let btn = document.createElement('button'); btn.innerText = i;
-            btn.onclick = () => {
-                if(!usedCards.includes(i) && !busted) usedCards.push(i);
-                else if(usedCards.includes(i) && !busted) { busted = true; usedCards = [i]; }
-                else if(busted) { busted = false; usedCards = [i]; }
-                updateUI();
+            let btn = document.createElement('button'); 
+            btn.innerText = i;
+            btn.onclick = () => { 
+                if (busted) { busted = false; usedCards = [i]; } 
+                else { 
+                    if(usedCards.includes(i)) usedCards = usedCards.filter(v=>v!==i); 
+                    else if(usedCards.length < 7) usedCards.push(i); 
+                }
+                updateUI(); 
             };
             grid.appendChild(btn);
         }
