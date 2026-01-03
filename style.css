@@ -1,0 +1,53 @@
+:root { 
+    --teal: #008080; --green: #2e8b57; --orange: #ff8c00; --gold: #ffd700; --danger: #ff4444;
+    --glass: rgba(255, 255, 255, 0.15); --glass-border: rgba(255, 255, 255, 0.3);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body { margin: 0; background: radial-gradient(circle at top left, var(--teal), var(--green)); color: white; font-family: -apple-system, sans-serif; min-height: 100vh; display: flex; justify-content: center; overflow-x: hidden; }
+
+button { touch-action: manipulation; cursor: pointer; border: 1px solid var(--glass-border); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+button:active { transform: scale(0.94); transition: transform 0.1s ease-out; }
+
+.screen { width: 95%; max-width: 450px; margin: 15px auto; padding: 25px; background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); border-radius: 35px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
+
+/* Card Grid Stages */
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.card-grid button { background: var(--glass); color: white; padding: 22px 0; border-radius: 20px; font-weight: 900; font-size: 1.6rem; min-height: 75px; }
+.card-active-style { background: linear-gradient(145deg, var(--teal), #006666) !important; border-color: var(--gold) !important; box-shadow: 0 0 15px rgba(0, 128, 128, 0.5) !important; }
+.card-busted-style { background: linear-gradient(145deg, var(--danger), #cc0000) !important; border-color: white !important; box-shadow: 0 0 15px rgba(255, 68, 68, 0.6) !important; }
+
+/* Totals & Layout */
+.totals-row { display: flex; gap: 15px; }
+.total-box { flex: 1; border-radius: 24px; padding: 18px; text-align: center; }
+.round-container { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); }
+.grand-container { background: white; color: var(--teal); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.total-box div { font-size: 2.4rem; font-weight: 900; }
+.total-box small { font-weight: 900; opacity: 0.7; font-size: 0.75rem; letter-spacing: 1px; }
+
+/* Modifiers */
+.mod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mod-grid button { background: rgba(0,0,0,0.2); border-radius: 15px; padding: 15px; font-weight: 800; }
+.mod-btn-active { background: var(--orange) !important; box-shadow: 0 5px 15px rgba(255, 140, 0, 0.4); }
+
+/* Live Rankings */
+.live-rankings-area { margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px; }
+.live-rank-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.live-icon { color: var(--gold); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+/* Log List */
+.log-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; color: #333; }
+.log-round { font-weight: 900; color: var(--teal); }
+.log-bust { color: var(--danger); font-weight: 900; }
+
+.big-btn { width: 100%; padding: 22px; border-radius: 24px; border: none; font-weight: 900; font-size: 1.3rem; text-transform: uppercase; margin-top: 10px; }
+.submit-btn { background: var(--orange); color: white; }
+.bust-btn { background: transparent; border: 2px solid white !important; color: white; }
+.bust-active { background: var(--danger) !important; border: none !important; }
+
+.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); }
+.celebration-content { background: white; color: #333; padding: 30px; border-radius: 35px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.top-nav { display: flex; justify-content: space-between; align-items: center; }
+.nav-btn-themed { background: var(--glass); border-radius: 12px; padding: 8px 15px; font-weight: 800; font-size: 0.8rem; color: white; }
+.banner { background: var(--gold); color: #443300; padding: 12px; border-radius: 15px; font-weight: 900; text-align: center; margin-bottom: 10px; }
+.threshold-style { border: 2px solid var(--gold) !important; background: rgba(255, 215, 0, 0.1) !important; }
