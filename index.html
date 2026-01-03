@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Flip 7 Share Pro</title>
+    <title>Flip 7 Sync</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#008080">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +24,7 @@
     <div id="end-game-overlay" class="overlay" style="display:none;">
         <div class="celebration-content">
             <h1>🏆 GAME OVER</h1>
-            <p>A player reached 200 points!</p>
+            <p>A player has reached the 200 point limit!</p>
             <div class="section-spacer"></div>
             <button class="big-btn submit-btn" onclick="window.rematch()">REMATCH</button>
             <div style="height:10px;"></div>
@@ -27,23 +32,13 @@
         </div>
     </div>
 
-    <div id="log-overlay" class="overlay" style="display:none;" onclick="window.toggleLog()">
-        <div class="celebration-content" style="width: 90%; max-height: 80%; overflow-y: auto;" onclick="event.stopPropagation()">
-            <h2 style="margin-top:0;">ROUND HISTORY</h2>
-            <div id="history-list"></div>
-            <button class="big-btn" style="margin-top:20px; background:var(--teal); color:white;" onclick="window.toggleLog()">CLOSE</button>
-        </div>
-    </div>
-
     <div id="home-screen" class="screen">
-        <h1>Flip 7 Share</h1>
+        <h1>Flip 7 Sync</h1>
         <div class="input-group">
             <label>PLAYER NAME</label>
             <input type="text" id="userNameInput" placeholder="TYPE NAME HERE" class="name-input-field" autocomplete="off" autocapitalize="words">
         </div>
-        
         <div class="home-spacer"></div> 
-
         <div class="host-card">
             <label>NEW GAME SETUP</label>
             <div class="counter-row">
@@ -51,9 +46,8 @@
                 <div id="playerCountDisplay" class="count-display">4</div>
                 <button class="counter-btn" onclick="window.adjustCount(1)">+</button>
             </div>
-            <button class="big-btn host-btn" onclick="window.hostGameFromUI()">HOST NEW GAME</button>
+            <button class="big-btn host-btn" style="background: white; color: var(--teal);" onclick="window.hostGameFromUI()">HOST NEW GAME</button>
         </div>
-
         <div class="home-footer">
             <button class="big-btn join-btn" style="background: var(--glass); color: white;" onclick="window.openJoinPopup()">JOIN EXISTING</button>
             <div id="game-manager" style="display:none; width:100%; margin-top:20px;">
@@ -68,15 +62,13 @@
         <div class="top-nav">
             <button class="nav-btn-themed" onclick="window.showScreen('home-screen')">HOME</button>
             <div id="roomCodeDisplay" class="nav-code" style="font-weight:900; opacity:0.8;">CODE: ------</div>
-            <button class="nav-btn-themed" onclick="window.toggleLog()">LOG</button>
+            <div style="width:70px;"></div> 
         </div>
-
         <div class="main-scroll-area">
             <div id="calc-view">
                 <div id="flip7-banner" class="banner" style="display:none;">FLIP 7 BONUS! (+15)</div>
                 <div class="card-grid" id="cardGrid"></div> 
-                <button class="big-btn bust-btn" id="bust-toggle-btn" onclick="window.clearCards()">CLEAR CARDS</button>
-                
+                <button class="big-btn bust-btn" id="bust-toggle-btn" onclick="window.triggerBust()">BUST</button>
                 <div class="mod-grid">
                     <button id="btn-m2" onclick="window.toggleMod('m2', 2)">×2</button>
                     <button id="btn-p2" onclick="window.toggleMod('p2', 2)">+2</button>
@@ -86,9 +78,7 @@
                     <button id="btn-p10" onclick="window.toggleMod('p10', 10)">+10</button>
                 </div>
                 <div class="section-spacer"></div>
-
                 <div class="totals-row">
-                    <div class="section-spacer"></div>
                     <div class="total-box round-container">
                         <small>ROUND</small>
                         <div id="round-display">0</div>
@@ -98,16 +88,15 @@
                         <div id="grand-display">0</div>
                     </div>
                 </div>
-
                 <div class="section-spacer"></div>
                 <button class="big-btn submit-btn" onclick="window.submitRound()">SUBMIT SCORE</button>
+                <div class="section-spacer"></div>
 
-                <div id="live-rankings" class="live-rankings-area">
+                    <div id="live-rankings" class="live-rankings-area">
                     <div class="ranking-header">LIVE STANDINGS</div>
                     <div id="live-rankings-list"></div>
                 </div>
             </div>
-
             <div id="waiting-view" style="display:none;">
                 <div class="leaderboard-header">
                     <h2>Leaderboard</h2>
