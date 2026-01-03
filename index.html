@@ -24,7 +24,7 @@
     <div id="end-game-overlay" class="overlay" style="display:none;">
         <div class="celebration-content">
             <h1>🏆 GAME OVER</h1>
-            <p>A player has reached the 200 point limit!</p>
+            <p>Target score reached!</p>
             <div class="section-spacer"></div>
             <button class="big-btn submit-btn" onclick="window.rematch()">REMATCH</button>
             <div style="height:10px;"></div>
@@ -55,10 +55,12 @@
 
     <div id="game-screen" class="screen" style="display:none;">
         <div class="top-nav">
-            <button class="nav-btn-themed" onclick="window.showScreen('home-screen')">HOME</button>
-            <div id="roomCodeDisplay" class="nav-code" style="font-weight:900; opacity:0.8;">CODE: ------</div>
-            <div style="width:70px;"></div> 
-        </div>
+            <div class="nav-side">
+                <button class="nav-btn-themed" onclick="window.showScreen('home-screen')">HOME</button>
+            </div>
+            <div id="roomCodeDisplay" class="nav-center">CODE: ------ | R1</div>
+            <div class="nav-side"></div> </div>
+
         <div class="main-scroll-area">
             <div id="calc-view">
                 <div id="flip7-banner" class="banner" style="display:none;">FLIP 7 BONUS! (+15)</div>
@@ -113,7 +115,7 @@
 
     <div id="lobby-screen" class="screen" style="display:none;">
         <h2 id="roomDisplayLobby">Game: ------</h2>
-        <div id="lobby-status" class="lobby-count" style="font-size: 1.2rem; font-weight: 900; margin-bottom: 10px;">Joined: 0 / 0</div>
+        <div id="lobby-status" class="lobby-count">Joined: 0 / 0</div>
         <div id="player-list" class="player-list"></div>
         <p class="pulse">Waiting for players...</p>
         <button class="nav-btn-themed" onclick="window.leaveGame()">Leave Lobby</button>
