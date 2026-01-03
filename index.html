@@ -50,11 +50,6 @@
         </div>
         <div class="home-footer">
             <button class="big-btn join-btn" style="background: var(--glass); color: white;" onclick="window.openJoinPopup()">JOIN EXISTING</button>
-            <div id="game-manager" style="display:none; width:100%; margin-top:20px;">
-                <label class="manager-label">YOUR ACTIVE GAMES</label>
-                <div id="game-list-container"></div>
-                <button class="delete-all-btn" onclick="window.deleteAllGames()">DELETE ALL GAMES</button>
-            </div>
         </div>
     </div>
 
@@ -67,8 +62,11 @@
         <div class="main-scroll-area">
             <div id="calc-view">
                 <div id="flip7-banner" class="banner" style="display:none;">FLIP 7 BONUS! (+15)</div>
-                <div class="card-grid" id="cardGrid"></div> 
-                <button class="big-btn bust-btn" id="bust-toggle-btn" onclick="window.triggerBust()">BUST</button>
+                
+                <div class="card-grid" id="cardGrid">
+                    <button class="big-btn bust-btn" id="bust-toggle-btn" onclick="window.triggerBust()">BUST</button>
+                </div> 
+
                 <div class="mod-grid">
                     <button id="btn-m2" onclick="window.toggleMod('m2', 2)">×2</button>
                     <button id="btn-p2" onclick="window.toggleMod('p2', 2)">+2</button>
@@ -77,7 +75,13 @@
                     <button id="btn-p8" onclick="window.toggleMod('p8', 8)">+8</button>
                     <button id="btn-p10" onclick="window.toggleMod('p10', 10)">+10</button>
                 </div>
+                
                 <div class="section-spacer"></div>
+                
+                <button class="big-btn submit-btn" onclick="window.submitRound()">SUBMIT SCORE</button>
+                
+                <div class="section-spacer"></div>
+
                 <div class="totals-row">
                     <div class="total-box round-container">
                         <small>ROUND</small>
@@ -88,15 +92,15 @@
                         <div id="grand-display">0</div>
                     </div>
                 </div>
-                <div class="section-spacer"></div>
-                <button class="big-btn submit-btn" onclick="window.submitRound()">SUBMIT SCORE</button>
+
                 <div class="section-spacer"></div>
 
-                    <div id="live-rankings" class="live-rankings-area">
+                <div id="live-rankings" class="live-rankings-area">
                     <div class="ranking-header">LIVE STANDINGS</div>
                     <div id="live-rankings-list"></div>
                 </div>
             </div>
+
             <div id="waiting-view" style="display:none;">
                 <div class="leaderboard-header">
                     <h2>Leaderboard</h2>
