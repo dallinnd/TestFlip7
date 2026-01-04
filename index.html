@@ -34,14 +34,11 @@
 
     <div id="home-screen" class="screen">
         <h1>Flip 7 Sync</h1>
-    
         <div class="input-group">
             <label>PLAYER NAME</label>
             <input type="text" id="userNameInput" placeholder="TYPE NAME HERE" class="name-input-field" autocomplete="off" autocapitalize="words">
         </div>
-
         <div class="home-spacer"></div> 
-
         <div class="host-card">
             <label>NEW GAME SETUP</label>
             <div class="counter-row">
@@ -51,12 +48,10 @@
             </div>
             <button class="big-btn host-btn" style="background: white; color: var(--teal);" onclick="window.hostGameFromUI()">HOST NEW GAME</button>
         </div>
-
         <div class="home-footer">
             <button class="big-btn join-btn" style="background: var(--glass); color: white;" onclick="window.openJoinPopup()">JOIN EXISTING</button>
-        
             <div id="game-manager" style="display:none; width:100%; margin-top:20px;">
-                <label class="manager-label" style="font-size: 0.75rem; font-weight: 900; opacity: 0.7; margin-bottom: 10px; display: block;">YOUR ACTIVE GAMES</label>
+                <label class="manager-label">YOUR ACTIVE GAMES</label>
                 <div id="game-list-container"></div>
                 <button class="delete-all-btn" onclick="window.deleteAllGames()">DELETE ALL GAMES</button>
             </div>
@@ -72,7 +67,6 @@
         <div class="main-scroll-area">
             <div id="calc-view">
                 <div id="flip7-banner" class="banner" style="display:none;">FLIP 7 BONUS! (+15)</div>
-                
                 <div class="card-grid" id="cardGrid">
                     <button class="big-btn bust-btn bust-grid-layout" id="bust-toggle-btn" onclick="window.triggerBust()">BUST</button>
                 </div> 
@@ -100,7 +94,6 @@
                         <div id="grand-display">0</div>
                     </div>
                 </div>
-                <div class="section-spacer"></div>
 
                 <div id="live-rankings" class="live-rankings-area">
                     <div class="ranking-header">LIVE STANDINGS</div>
