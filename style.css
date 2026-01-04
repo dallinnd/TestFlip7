@@ -8,11 +8,7 @@
     --glass-border: rgba(255, 255, 255, 0.3);
 }
 
-* { 
-    box-sizing: border-box; 
-    -webkit-tap-highlight-color: transparent; 
-    user-select: none; 
-}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
 body { 
     margin: 0; 
@@ -22,7 +18,6 @@ body {
     min-height: 100vh; 
     display: flex; 
     justify-content: center; 
-    overflow-x: hidden; 
 }
 
 button {
@@ -32,80 +27,66 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: inherit;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
 }
 
 button:active { transform: scale(0.94); }
 
 .screen { 
-    width: 95%; 
-    max-width: 450px; 
-    margin: 15px auto; 
-    padding: 25px; 
-    background: rgba(255,255,255,0.08); 
-    backdrop-filter: blur(20px); 
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: 35px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; 
-    border: 1px solid rgba(255,255,255,0.1);
+    width: 95%; max-width: 450px; margin: 15px auto; padding: 25px; 
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: 35px; display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* --- CALCULATOR TILES --- */
+/* --- Home Screen UI --- */
+.name-input-field { 
+    width: 100%; padding: 18px; border-radius: 20px; border: none; font-size: 1.4rem; font-weight: 900; 
+    text-align: center; color: var(--teal); background: white; box-shadow: inset 0 2px 8px rgba(0,0,0,0.1); margin-top: 8px;
+}
+
+.host-card { 
+    background: rgba(0,0,0,0.15); padding: 20px; border-radius: 28px; border: 1px solid var(--glass-border);
+    display: flex; flex-direction: column; align-items: center; width: 100%; gap: 15px;
+}
+
+.counter-row { display: flex; justify-content: center; align-items: center; gap: 25px; width: 100%; }
+.counter-btn { width: 60px; height: 60px; border-radius: 18px; font-size: 1.8rem; background: white; color: var(--teal); border: none; font-weight: bold; }
+.count-display { font-size: 3rem; font-weight: 900; min-width: 60px; text-align: center; }
+
+/* --- Calculator Grid & Dynamic Colors --- */
 .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
-.card-grid button { 
-    background: var(--glass);
-    color: white; 
-    padding: 22px 0; 
-    border-radius: 20px; 
-    font-weight: 900; 
-    font-size: 1.6rem; 
-    min-height: 75px; 
-}
+.card-grid button { background: var(--glass); color: white; border-radius: 20px; font-weight: 900; font-size: 1.6rem; min-height: 75px; }
 
-/* --- DYNAMIC CARD COLORS --- */
 .active-0 { background: linear-gradient(45deg, #008080, #ff0000, #800080, #ffff00) !important; color: white !important; }
-.active-1 { background: #E6E6FA !important; color: #4b0082 !important; } /* Lavender */
-.active-2 { background: #32CD32 !important; color: white !important; } /* Lime Green */
-.active-3 { background: #FF5E5E !important; color: white !important; } /* Pink/Red */
-.active-4 { background: #00CED1 !important; color: white !important; } /* Bright Teal */
-.active-5 { background: #228B22 !important; color: white !important; } /* Green */
-.active-6 { background: #DA70D6 !important; color: white !important; } /* Pink/Purple */
-.active-7 { background: #FFB6C1 !important; color: #d02090 !important; } /* Soft Pink */
-.active-8 { background: #98FF98 !important; color: #006400 !important; } /* Mint Green */
-.active-9 { background: #FFA500 !important; color: white !important; } /* Orange */
-.active-10 { background: #FF0000 !important; color: white !important; } /* Red */
-.active-11 { background: #5D76A9 !important; color: #e0e0e0 !important; border: 1px dashed rgba(255,255,255,0.5) !important; } /* Faded Jeans */
-.active-12 { background: #808080 !important; color: white !important; } /* Gray */
+.active-1 { background: #E6E6FA !important; color: #4b0082 !important; }
+.active-2 { background: #32CD32 !important; }
+.active-3 { background: #FF5E5E !important; }
+.active-4 { background: #00CED1 !important; }
+.active-5 { background: #228B22 !important; }
+.active-6 { background: #DA70D6 !important; }
+.active-7 { background: #FFB6C1 !important; color: #d02090 !important; }
+.active-8 { background: #98FF98 !important; color: #006400 !important; }
+.active-9 { background: #FFA500 !important; }
+.active-10 { background: #FF0000 !important; }
+.active-11 { background: #5D76A9 !important; border: 1px dashed white !important; }
+.active-12 { background: #808080 !important; }
 
-/* --- MULTIPLIER (SILVER BY DEFAULT) --- */
-#btn-m2 {
-    background: linear-gradient(145deg, #bdc3c7, #95a5a6);
-    color: #2c3e50;
-    border: 1px solid rgba(255,255,255,0.5);
-}
-
-#btn-m2.mod-btn-active { 
-    background: linear-gradient(145deg, var(--orange), #cc7000) !important; 
-    color: white !important;
-}
+/* --- Multiplier & Buttons --- */
+#btn-m2 { background: linear-gradient(145deg, #bdc3c7, #95a5a6); color: #2c3e50; }
+#btn-m2.mod-btn-active { background: linear-gradient(145deg, var(--orange), #cc7000) !important; color: white !important; }
 
 .mod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .mod-grid button { background: rgba(0,0,0,0.2); border-radius: 15px; font-weight: 800; padding: 15px; color: white; }
-.mod-btn-active { background: linear-gradient(145deg, var(--orange), #cc7000) !important; transform: scale(1.05); }
+.mod-btn-active { background: linear-gradient(145deg, var(--orange), #cc7000) !important; }
 
-/* --- BUST & SUBMIT --- */
 .bust-btn { background: rgba(255,255,255,0.05); border: 2px solid white !important; color: white; }
-.bust-grid-layout { grid-column: span 2; margin: 0 !important; border-radius: 20px !important; font-size: 1.6rem; }
+.bust-grid-layout { grid-column: span 2; margin: 0 !important; border-radius: 20px !important; }
 .bust-active { background: linear-gradient(145deg, var(--danger), #cc0000) !important; border-color: transparent !important; }
 
 .big-btn { width: 100%; padding: 24px; border-radius: 24px; border: none; font-weight: 900; font-size: 1.4rem; text-transform: uppercase; }
-.submit-btn { background: linear-gradient(145deg, var(--orange), #e67e00); color: white; box-shadow: 0 8px 20px rgba(255, 140, 0, 0.3); }
+.submit-btn { background: linear-gradient(145deg, var(--orange), #e67e00); color: white; }
 
-/* --- TOTALS & RANKINGS --- */
+/* --- Totals & Rankings --- */
 .totals-row { display: flex; gap: 15px; width: 100%; }
 .total-box { flex: 1; border-radius: 24px; padding: 18px; text-align: center; }
 .round-container { background: rgba(0,0,0,0.25); }
@@ -115,4 +96,7 @@ button:active { transform: scale(0.94); }
 
 .live-rankings-area { margin-top: 25px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px; }
 .live-rank-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.me-highlight { color: var(--gold); }
+
+/* Overlays */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); }
+.celebration-content { background: white; color: var(--teal); padding: 40px; border-radius: 35px; text-align: center; max-width: 85%; }
