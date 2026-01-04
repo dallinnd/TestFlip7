@@ -20,7 +20,26 @@ let activeGames = JSON.parse(localStorage.getItem('f7_game_list')) || [];
 let usedCards = [], bonuses = [], mult = 1, busted = false, currentGrandTotal = 0;
 let targetPlayerCount = 4, hasCelebrated = false;
 
-// --- Helper Functions ---
+// --- Global UI Logic ---
+window.adjustCount = (v) => {
+    targetPlayerCount = Math.max(1, Math.min(20, targetPlayerCount + v));
+    const display = document.getElementById('playerCountDisplay');
+    if (display) display.innerText = targetPlayerCount;
+};
+
+window.triggerBust = () => { 
+    busted = !busted; 
+    if(busted) { usedCards = []; bonuses = []; mult = 1; } 
+    updateUI(); 
+};
+
+window.toggleMod = (id, val) => { 
+    if(id === 'm2') mult = (mult === 2) ? 1 : 2; 
+    else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val); 
+    updateUI(); 
+};
+
+// --- Scoring & Sync ---
 function calculateCurrentScore() {
     if (busted) return 0;
     const sum = usedCards.reduce((a, b) => a + b, 0);
@@ -46,13 +65,11 @@ function updateUI() {
         update(ref(db, `games/${gameCode}/players/${myName}`), { liveScore: roundScore, isBusted: busted });
     }
 
-    // Dynamic Card Color Logic
     const grid = document.getElementById('cardGrid');
     if(grid) {
         Array.from(grid.children).forEach((btn) => {
             const val = parseInt(btn.innerText);
             if (!isNaN(val)) {
-                // Remove existing active classes (active-0 through active-12)
                 btn.className = btn.className.replace(/\bactive-\d+\b/g, "");
                 if (usedCards.includes(val)) btn.classList.add(`active-${val}`);
             }
@@ -68,37 +85,23 @@ function updateUI() {
     });
 }
 
-// --- Global Actions ---
-window.triggerBust = () => { 
-    busted = !busted; 
-    if(busted) { usedCards = []; bonuses = []; mult = 1; } 
-    updateUI(); 
-};
-
-window.toggleMod = (id, val) => { 
-    if(id === 'm2') mult = (mult === 2) ? 1 : 2; 
-    else bonuses.includes(val) ? bonuses = bonuses.filter(b=>b!==val) : bonuses.push(val); 
-    updateUI(); 
-};
-
-window.submitRound = async () => {
-    const snap = await get(ref(db, `games/${gameCode}`));
-    const rNum = snap.val().roundNum;
-    const score = calculateCurrentScore();
-    let h = (await get(ref(db, `games/${gameCode}/players/${myName}`))).val().history || [0];
-    h[rNum] = { score, usedCards: [...usedCards], bonuses: [...bonuses], mult, busted };
-    await update(ref(db, `games/${gameCode}/players/${myName}`), { history: h, submitted: true, liveScore: 0, isBusted: false });
-    usedCards = []; bonuses = []; mult = 1; busted = false; updateUI();
-};
-
-// --- Initialization ---
+// --- Lifecycle ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Name Input Fix
     const nInput = document.getElementById('userNameInput');
     if(nInput) {
         nInput.value = myName;
-        nInput.oninput = () => { myName = nInput.value; localStorage.setItem('f7_name', myName); };
+        nInput.addEventListener('input', () => {
+            myName = nInput.value;
+            localStorage.setItem('f7_name', myName);
+        });
     }
 
+    // Player Count Display Fix
+    const countDisp = document.getElementById('playerCountDisplay');
+    if (countDisp) countDisp.innerText = targetPlayerCount;
+
+    // Grid Initialization
     const grid = document.getElementById('cardGrid');
     const bustBtn = document.getElementById('bust-toggle-btn');
     if(grid) {
@@ -120,5 +123,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Note: Ensure other syncApp/joinGame functions from previous snippets are maintained 
-// to keep Firebase connectivity active.
+// Note: Include your other existing Firebase functions (syncApp, hostGameFromUI, etc.) below this line.
